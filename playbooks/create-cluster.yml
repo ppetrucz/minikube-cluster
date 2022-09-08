@@ -6,9 +6,8 @@
       - CLUSTER_NAME: "asgard-argocd"
       - CPU_COUNT: 4
       - MEM_COUNT: 8192
-      - NAMESPACE: "argocd"
     tasks:
-    
+
     - name: "Create minikube cluster"
       delegate_to: localhost
       shell: "minikube start \
