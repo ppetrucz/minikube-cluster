@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: easy-gate
+  namespace: argocd
+spec:
+  destination:
+    namespace: easy-gate
+    server: https://kubernetes.default.svc 
+  project: default
+  source: 
+    path: .
+    repoURL: https://github.com/ppetrucz/easy-gate-config
+    targetRevision: main
+  syncPolicy: 
+    automated:
+      prune: true
+      selfHeal: false
+    syncOptions:
+    - CreateNamespace=true

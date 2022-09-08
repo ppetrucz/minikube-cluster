@@ -1,0 +1,38 @@
+---
+  - name: "Create Minikube cluster and deploy argocd"
+    hosts: localhost
+    connection: local
+    vars:
+      - CLUSTER_NAME: "asgard-argocd"
+      - CPU_COUNT: 4
+      - MEM_COUNT: 8192
+      - NAMESPACE: "argocd"
+
+    tasks:
+    - name: "Create minikube cluster"
+      delegate_to: localhost
+      shell: "minikube start \
+      -p {{CLUSTER_NAME}} \
+      --memory {{MEM_COUNT}} \
+      --cpus {{CPU_COUNT}} \
+      --vm-driver=docker \
+      --driver=docker"
+
+    - name: "Enable ingress addon"
+      shell: "minikube addons enable ingress -p {{CLUSTER_NAME}}"
+
+    - name: "Create argocd namespace"
+      shell: "kubectl create namespace {{NAMESPACE}}"
+
+    - name: "Deploy argocd"
+      shell: "kubectl apply -n {{NAMESPACE}} -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
+
+    - name: "Wait for argocd ready state"
+      shell: "kubectl get pods -n {{NAMESPACE}} -o json"
+      register: argocd_pods_ready
+      until: argocd_pods_ready.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
+      retries: 30
+      delay: 5
+    
+    - name: "Patch server to use loadbalancer"
+      shell: "kubectl patch svc argocd-server -n {{NAMESPACE}} -p '{\"spec\": {\"type\": \"LoadBalancer\"}}'"

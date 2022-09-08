@@ -1,0 +1,13 @@
+# Export envs
+export argoURL="127.0.0.1:46099"
+export argoPASS=$(kubectl get secret/argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d)
+
+# Initial Log in
+argocd login --insecure --username admin --password $argoPass --grpc-web $argoURL
+
+# Change password
+export argoPWD="admin123"
+argocd account update-password --account admin --current-password $argoPass --new-password $argoPWD
+
+# Log in
+argocd login --insecure --username admin --password $argoPWD --grpc-web $argoURL
