@@ -1,0 +1,32 @@
+---
+  - name: "Deploy jenkins to the cluster"
+    hosts: localhost
+    connection: local
+    vars:
+      - CLUSTER_NAME: "asgard-argocd"
+      - NAMESPACE: "jenkins-project"
+      - PV_NAME: "jenkins-pv"
+      - PV_HOST_PATH: "/data/jenkins-volume/"
+    tasks:
+
+    - name: "Clone git project"
+      shell: "cd /tmp && git clone https://github.com/lvthillo/minikube-helm-jenkins.git"
+
+    - name: "Create jenkins namespace"
+      shell: "kubectl create -f /tmp/minikube-helm-jenkins/jenkins-namespace.yaml"
+
+    - name: "Create jenkins volume"
+      shell: "kubectl create -f /tmp/minikube-helm-jenkins/minikube/jenkins-volume.yaml"
+
+    - name: "Deploy jenkins with helm"
+      shell: "cd /tmp/minikube-helm-jenkins && helm init"
+      
+    - name: "Wait for argocd ready state"
+      shell: "kubectl get pods -n {{NAMESPACE}} -o json"
+      register: argocd_pods_ready
+      until: argocd_pods_ready.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
+      retries: 30
+      delay: 5
+    
+    - name: "Patch server to use loadbalancer"
+      shell: "kubectl patch svc argocd-server -n {{NAMESPACE}} -p '{\"spec\": {\"type\": \"LoadBalancer\"}}'"

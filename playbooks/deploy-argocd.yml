@@ -1,5 +1,5 @@
 ---
-  - name: "Create Minikube cluster and deploy argocd"
+  - name: "Deploy argocd to minikube"
     hosts: localhost
     connection: local
     vars:
@@ -7,20 +7,8 @@
       - CPU_COUNT: 4
       - MEM_COUNT: 8192
       - NAMESPACE: "argocd"
-
     tasks:
-    - name: "Create minikube cluster"
-      delegate_to: localhost
-      shell: "minikube start \
-      -p {{CLUSTER_NAME}} \
-      --memory {{MEM_COUNT}} \
-      --cpus {{CPU_COUNT}} \
-      --vm-driver=docker \
-      --driver=docker"
-
-    - name: "Enable ingress addon"
-      shell: "minikube addons enable ingress -p {{CLUSTER_NAME}}"
-
+    
     - name: "Create argocd namespace"
       shell: "kubectl create namespace {{NAMESPACE}}"
 
