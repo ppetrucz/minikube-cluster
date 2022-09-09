@@ -8,33 +8,37 @@
       - PV_NAME: "jenkins-pv"
       - PV_HOST_PATH: "/data/jenkins-volume/"
       - CHART: "jenkinsci/jenkins"
+      - VOL_MOUNT: "/data"
     tasks:
-
-    # - name: "Create jenkins namespace"
-    #   shell: "kubectl create -f {{playbook_dir}}/configs/jenkins-ns.yaml"
 
     - name: Create jenkins ns
       kubernetes.core.k8s:
         state: present 
         src: "{{playbook_dir}}/configs/jenkins-ns.yaml"
 
-    # - name: "Create jenkins volume"
-    #   shell: "kubectl create -f {{playbook_dir}}/configs/jenkins-pv.yaml"
-
     - name: Create jenkins pv
       kubernetes.core.k8s:
         state: present 
         src: "{{playbook_dir}}/configs/jenkins-pv.yaml"
 
-    # - name: "Deploy jenkins with helm"
-    #   shell: "helm install jenkins -n {{NAMESPACE}} -f jenkins-values.yaml {{CHART}}"
-      
     - name: Deploy jenkins with helm
       kubernetes.core.helm:
         name: jenkins
         chart_ref: "{{CHART}}"
         release_namespace: "{{NAMESPACE}}"
-        values_files: "{{playbook_dir}}/jenkins-values.yaml"
+        values_files: "{{playbook_dir}}/configs/jenkins-values.yaml"
+
+    - name: Change volume mount access
+      shell: ssh -i /home/pal/.minikube/machines/asgard-argocd/id_rsa docker@$(minikube ip) "echo \"chmod 777 -R {{VOL_MOUNT}}/jenkins-volume && ls -lart {{VOL_MOUNT}}\" | sudo su"
+      register: result
+
+    - name: Restart jenkins pod
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Pod
+        namespace: "{{NAMESPACE}}"
+        name: jenkins-0
+        state: absent
 
     - name: Wait for jenkins pods to be ready
       kubernetes.core.k8s_info:
@@ -43,10 +47,3 @@
         namespace: "{{NAMESPACE}}"
         wait_sleep: 5
         wait_timeout: 150
-
-    # - name: "Wait for argocd ready state"
-    #   shell: "kubectl get pods -n {{NAMESPACE}} -o json"
-    #   register: jenkins_pods_ready
-    #   until: jenkins_pods_ready.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
-    #   retries: 30
-    #   delay: 5

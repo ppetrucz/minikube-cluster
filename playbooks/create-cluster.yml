@@ -3,6 +3,7 @@
     hosts: localhost
     connection: local
     vars:
+      - ansible_python_interpreter: "/usr/bin/python"
       - CLUSTER_NAME: "asgard-argocd"
       - CPU_COUNT: 4
       - MEM_COUNT: 8192
