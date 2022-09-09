@@ -4,6 +4,8 @@
     connection: local
     vars:
       - CLUSTER_NAME: "asgard-argocd"
+      - CPU_COUNT: 4
+      - MEM_COUNT: 8192
     tasks:
     
     - name: "Start minikube cluster"

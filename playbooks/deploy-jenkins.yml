@@ -4,29 +4,49 @@
     connection: local
     vars:
       - CLUSTER_NAME: "asgard-argocd"
-      - NAMESPACE: "jenkins-project"
+      - NAMESPACE: "jenkins"
       - PV_NAME: "jenkins-pv"
       - PV_HOST_PATH: "/data/jenkins-volume/"
+      - CHART: "jenkinsci/jenkins"
     tasks:
 
-    - name: "Clone git project"
-      shell: "cd /tmp && git clone https://github.com/lvthillo/minikube-helm-jenkins.git"
+    # - name: "Create jenkins namespace"
+    #   shell: "kubectl create -f {{playbook_dir}}/configs/jenkins-ns.yaml"
 
-    - name: "Create jenkins namespace"
-      shell: "kubectl create -f /tmp/minikube-helm-jenkins/jenkins-namespace.yaml"
+    - name: Create jenkins ns
+      kubernetes.core.k8s:
+        state: present 
+        src: "{{playbook_dir}}/configs/jenkins-ns.yaml"
 
-    - name: "Create jenkins volume"
-      shell: "kubectl create -f /tmp/minikube-helm-jenkins/minikube/jenkins-volume.yaml"
+    # - name: "Create jenkins volume"
+    #   shell: "kubectl create -f {{playbook_dir}}/configs/jenkins-pv.yaml"
 
-    - name: "Deploy jenkins with helm"
-      shell: "cd /tmp/minikube-helm-jenkins && helm init"
+    - name: Create jenkins pv
+      kubernetes.core.k8s:
+        state: present 
+        src: "{{playbook_dir}}/configs/jenkins-pv.yaml"
+
+    # - name: "Deploy jenkins with helm"
+    #   shell: "helm install jenkins -n {{NAMESPACE}} -f jenkins-values.yaml {{CHART}}"
       
-    - name: "Wait for argocd ready state"
-      shell: "kubectl get pods -n {{NAMESPACE}} -o json"
-      register: argocd_pods_ready
-      until: argocd_pods_ready.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
-      retries: 30
-      delay: 5
-    
-    - name: "Patch server to use loadbalancer"
-      shell: "kubectl patch svc argocd-server -n {{NAMESPACE}} -p '{\"spec\": {\"type\": \"LoadBalancer\"}}'"
+    - name: Deploy jenkins with helm
+      kubernetes.core.helm:
+        name: jenkins
+        chart_ref: "{{CHART}}"
+        release_namespace: "{{NAMESPACE}}"
+        values_files: "{{playbook_dir}}/jenkins-values.yaml"
+
+    - name: Wait for jenkins pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        wait: true
+        namespace: "{{NAMESPACE}}"
+        wait_sleep: 5
+        wait_timeout: 150
+
+    # - name: "Wait for argocd ready state"
+    #   shell: "kubectl get pods -n {{NAMESPACE}} -o json"
+    #   register: jenkins_pods_ready
+    #   until: jenkins_pods_ready.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
+    #   retries: 30
+    #   delay: 5
